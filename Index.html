@@ -1,0 +1,490 @@
+  <!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rosa brillante</title>
+
+<style>
+html,body{
+  margin:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:#050000;
+}
+
+#canvas-container{
+  position:absolute;
+  inset:0;
+}
+
+canvas{
+  display:block;
+  width:100%;
+  height:100%;
+}
+</style>
+</head>
+
+<body>
+
+<div id="canvas-container"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+
+function linspace(a,b,n){
+  const out=new Float64Array(n);
+  const step=(b-a)/(n-1);
+  for(let i=0;i<n;i++) out[i]=a+step*i;
+  return out;
+}
+
+function mod(a,n){
+  return ((a%n)+n)%n;
+}
+
+function computeRoseGrid(nx,ntheta){
+
+  const xs=linspace(0,1,nx);
+  const thetas=linspace(-2*Math.PI,15*Math.PI,ntheta);
+
+  const pos=new Float32Array(nx*ntheta*3);
+  const colors=new Float32Array(nx*ntheta*3);
+
+  let index=0;
+
+  for(let i=0;i<nx;i++){
+
+    const x=xs[i];
+
+    for(let j=0;j<ntheta;j++){
+
+      const theta=thetas[j];
+
+      const phi=
+        (Math.PI/2)*
+        Math.exp(-theta/(8*Math.PI));
+
+      const Xs=
+        1-
+        0.5*
+        Math.pow(
+          (5/4)*
+          Math.pow(
+            1-
+            mod(3.6*theta,2*Math.PI)/Math.PI,
+            2
+          )-
+          1/4,
+          2
+        );
+
+      const y=
+        1.95653*
+        x*x*
+        Math.pow(1.27689*x-1,2)*
+        Math.sin(phi);
+
+      const r=
+        Xs*
+        (x*Math.sin(phi)+y*Math.cos(phi));
+
+      const X3=r*Math.sin(theta);
+      const Y3=r*Math.cos(theta);
+      const Z3=
+        Xs*
+        (x*Math.cos(phi)-y*Math.sin(phi));
+
+      pos[index*3]=X3;
+      pos[index*3+1]=Z3;
+      pos[index*3+2]=Y3;
+
+      const t=i/(nx-1);
+
+      colors[index*3]=1;
+      colors[index*3+1]=0.08+0.55*t;
+      colors[index*3+2]=0.015+0.08*t;
+
+      index++;
+    }
+  }
+
+  return {
+    pos,
+    colors,
+    nx,
+    ntheta
+  };
+}
+
+function buildGeometry(nx,ntheta){
+
+  const data=computeRoseGrid(nx,ntheta);
+
+  const indices=[];
+
+  for(let i=0;i<nx-1;i++){
+
+    for(let j=0;j<ntheta-1;j++){
+
+      const a=i*ntheta+j;
+      const b=a+1;
+      const c=a+ntheta;
+      const d=c+1;
+
+      indices.push(a,c,b);
+      indices.push(b,c,d);
+    }
+  }
+
+  const geometry=new THREE.BufferGeometry();
+
+  geometry.setAttribute(
+    'position',
+    new THREE.BufferAttribute(data.pos,3)
+  );
+
+  geometry.setAttribute(
+    'color',
+    new THREE.BufferAttribute(data.colors,3)
+  );
+
+  geometry.setIndex(indices);
+
+  geometry.computeVertexNormals();
+
+  return geometry;
+}
+
+
+const container=
+  document.getElementById('canvas-container');
+
+const scene=
+  new THREE.Scene();
+
+scene.background=
+  new THREE.Color(0x050000);
+
+
+const camera=
+  new THREE.PerspectiveCamera(
+    42,
+    window.innerWidth/window.innerHeight,
+    0.01,
+    100
+  );
+
+
+const renderer=
+  new THREE.WebGLRenderer({
+    antialias:true,
+    alpha:false
+  });
+
+renderer.setPixelRatio(
+  Math.min(window.devicePixelRatio,2)
+);
+
+renderer.setSize(
+  window.innerWidth,
+  window.innerHeight
+);
+
+renderer.outputEncoding=
+  THREE.sRGBEncoding;
+
+container.appendChild(renderer.domElement);
+
+
+/* ILUMINACIÓN */
+
+const ambient=
+  new THREE.AmbientLight(
+    0xff4b2b,
+    0.8
+  );
+
+scene.add(ambient);
+
+
+const light=
+  new THREE.PointLight(
+    0xff3b18,
+    3.5,
+    20
+  );
+
+light.position.set(
+  2,
+  2,
+  4
+);
+
+scene.add(light);
+
+
+const light2=
+  new THREE.PointLight(
+    0xff9a35,
+    2.5,
+    15
+  );
+
+light2.position.set(
+  -3,
+  -1,
+  -2
+);
+
+scene.add(light2);
+
+
+/* FLOR */
+
+const group=
+  new THREE.Group();
+
+scene.add(group);
+
+
+const geometry=
+  buildGeometry(80,800);
+
+
+/* FLOR PRINCIPAL */
+
+const material=
+  new THREE.MeshBasicMaterial({
+
+    vertexColors:true,
+
+    side:THREE.DoubleSide,
+
+    transparent:true,
+
+    opacity:0.94
+  });
+
+
+const rose=
+  new THREE.Mesh(
+    geometry,
+    material
+  );
+
+group.add(rose);
+
+
+
+const glowMaterial=
+  new THREE.MeshBasicMaterial({
+
+    vertexColors:true,
+
+    side:THREE.DoubleSide,
+
+    transparent:true,
+
+    opacity:0.12,
+
+    blending:THREE.AdditiveBlending,
+
+    depthWrite:false
+  });
+
+
+const glow=
+  new THREE.Mesh(
+    geometry,
+    glowMaterial
+  );
+
+glow.scale.set(
+  1.035,
+  1.035,
+  1.035
+);
+
+group.add(glow);
+
+
+const sparkleGeometry=
+  new THREE.BufferGeometry();
+
+const sparkleCount=260;
+
+const sparklePositions=
+  new Float32Array(
+    sparkleCount*3
+  );
+
+const sparkleSizes=
+  new Float32Array(
+    sparkleCount
+  );
+
+for(let i=0;i<sparkleCount;i++){
+
+  const angle=
+    Math.random()*Math.PI*2;
+
+  const radius=
+    0.7+
+    Math.random()*1.8;
+
+  const height=
+    (Math.random()-0.5)*2.2;
+
+  sparklePositions[i*3]=
+    Math.cos(angle)*radius;
+
+  sparklePositions[i*3+1]=
+    height;
+
+  sparklePositions[i*3+2]=
+    Math.sin(angle)*radius;
+
+  sparkleSizes[i]=
+    1+
+    Math.random()*3;
+}
+
+sparkleGeometry.setAttribute(
+  'position',
+  new THREE.BufferAttribute(
+    sparklePositions,
+    3
+  )
+);
+
+sparkleGeometry.setAttribute(
+  'size',
+  new THREE.BufferAttribute(
+    sparkleSizes,
+    1
+  )
+);
+
+
+const sparkleMaterial=
+  new THREE.PointsMaterial({
+
+    color:0xffd6a0,
+
+    size:0.035,
+
+    transparent:true,
+
+    opacity:0.85,
+
+    blending:THREE.AdditiveBlending,
+
+    depthWrite:false
+  });
+
+
+const sparkles=
+  new THREE.Points(
+    sparkleGeometry,
+    sparkleMaterial
+  );
+
+group.add(sparkles);
+
+
+
+geometry.computeBoundingSphere();
+
+const sphere=
+  geometry.boundingSphere;
+
+const distance=
+  sphere.radius*2.65;
+
+camera.position.set(
+  distance*0.55,
+  distance*0.18,
+  distance*0.9
+);
+
+camera.lookAt(
+  sphere.center
+);
+
+
+
+let time=0;
+
+function animate(){
+
+  requestAnimationFrame(animate);
+
+  time+=0.016;
+
+
+
+  group.rotation.y+=0.0025;
+
+
+
+  group.position.y=
+    Math.sin(time*0.7)*0.035;
+
+
+
+  const pulse=
+    0.09+
+    Math.sin(time*2.2)*0.045;
+
+  glowMaterial.opacity=
+    pulse;
+
+
+
+  sparkleMaterial.opacity=
+    0.55+
+    Math.sin(time*2.5)*0.3;
+
+
+
+  sparkles.rotation.y=
+    -time*0.08;
+
+  sparkles.rotation.x=
+    Math.sin(time*0.35)*0.04;
+
+
+  renderer.render(
+    scene,
+    camera
+  );
+}
+
+animate();
+
+
+window.addEventListener(
+  'resize',
+  ()=>{
+
+    camera.aspect=
+      window.innerWidth/
+      window.innerHeight;
+
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(
+      window.innerWidth,
+      window.innerHeight
+    );
+  }
+);
+
+</script>
+
+</body>
+</html>
