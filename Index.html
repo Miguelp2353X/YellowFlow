@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rosa brillante</title>
+<title>A little flower</title>
 
 <style>
 html,body{
@@ -200,8 +200,6 @@ renderer.outputEncoding=
 container.appendChild(renderer.domElement);
 
 
-/* ILUMINACIÓN */
-
 const ambient=
   new THREE.AmbientLight(
     0xff4b2b,
@@ -243,8 +241,6 @@ light2.position.set(
 scene.add(light2);
 
 
-/* FLOR */
-
 const group=
   new THREE.Group();
 
@@ -255,7 +251,6 @@ const geometry=
   buildGeometry(80,800);
 
 
-/* FLOR PRINCIPAL */
 
 const material=
   new THREE.MeshBasicMaterial({
